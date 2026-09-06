@@ -5,5 +5,5 @@
    Drive sync uses the SAME client (scope is requested in code, no extra setup).
    On the OAuth consent screen, add your Gmail as a test user. */
 window.NOVA = {
-  GOOGLE_CLIENT_ID: ""
+  GOOGLE_CLIENT_ID: "695113415507-1fl9vjq82eno99i05nu74110714h59kq.apps.googleusercontent.com"
 };
