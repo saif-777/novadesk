@@ -188,14 +188,14 @@ function initHub() {
   }
 
   STATIONS.forEach((s, i) => {
-    const px = (i - 1.5) * 4.2;
+    const px = (i - 1.5) * 5.0;
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(3.2, 1.8, 0.25),
       new THREE.MeshBasicMaterial({ map: labelTexture(s.label, s.sub, s.color), transparent: true })
     );
     mesh.position.set(px, 0.4, 0.5);
     mesh.scale.setScalar(0.001);
-    mesh.userData = { station: s, baseY: 0.4, phase: i * 1.7, baseX: px, born: 0.4 + i * 0.22 };
+    mesh.userData = { station: s, baseY: 0.4, phase: i * 0.9, baseX: px, born: 0.4 + i * 0.22 };
     scene.add(mesh); pickables.push(mesh);
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(1.6, 0.03, 10, 60),
@@ -231,6 +231,8 @@ function initHub() {
 
   const look = new THREE.Vector3(0, 0.4, 0);
   const basePos = new THREE.Vector3(0, 1.6, 11);
+  const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion();
+  const _up = new THREE.Vector3(0, 1, 0), _tv = new THREE.Vector3();
   function easeOutBack(x) { const c = 1.70158; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); }
   (function anim(t) {
     requestAnimationFrame(anim);
@@ -243,10 +245,11 @@ function initHub() {
       const grow = raw <= 0 ? 0.001 : easeOutBack(raw);
       m.scale.setScalar(grow * (m === hovered ? 1.12 : 1));
       m.position.x = u.baseX;
-      m.position.y = u.baseY + Math.sin(time * 1.2 + u.phase) * 0.18;
-      if (spinFx > 0) m.rotation.y += 0.22 * spinFx; else m.lookAt(camera.position);
+      m.position.y = u.baseY + Math.sin(time * 0.8 + u.phase) * 0.1;
+      if (spinFx > 0) m.rotation.y += 0.22 * spinFx;
+      else { _m4.lookAt(m.position, _tv.copy(camera.position), _up); _q.setFromRotationMatrix(_m4); m.quaternion.slerp(_q, 0.12); }
       u.ring.position.set(u.baseX, m.position.y, 0.1);
-      u.ring.rotation.z += 0.003;
+      u.ring.rotation.z += 0.0012;
       u.ring.material.opacity = 0.5 * Math.min(1, raw * 2);
     });
     if (spinFx > 0) spinFx -= 0.03;
@@ -277,7 +280,7 @@ function enterStation(s) {
 }
 function meshX(s) {
   const i = STATIONS.findIndex((x) => x.id === s.id);
-  return (i - 1.5) * 4.2;
+  return (i - 1.5) * 5.0;
 }
 document.getElementById("back-btn").addEventListener("click", () => {
   document.getElementById("station").classList.add("hidden");
