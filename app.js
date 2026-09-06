@@ -197,33 +197,21 @@ function initHub() {
     new THREE.MeshBasicMaterial({ map: labelTexture("NOVADESK", "your solar hub", "#ffd166"), transparent: true }));
   sunLbl.position.set(0, 2.5, -1.5); scene.add(sunLbl);
 
-  const ORBITS = [4.6, 6.1, 7.6, 9.1], SPEEDS = [0.26, 0.19, 0.14, 0.1];
-  function orbitPoint(r, a, out) {
-    out.set(Math.cos(a) * r, 0.4 + Math.sin(a) * r * 0.14, -0.6 + Math.sin(a) * r * 0.45);
-    return out;
-  }
-  ORBITS.forEach((r, i) => {
-    const pts = [];
-    for (let k = 0; k < 128; k++) pts.push(orbitPoint(r, (k / 128) * Math.PI * 2, new THREE.Vector3()));
-    scene.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color: new THREE.Color(STATIONS[i].color), transparent: true, opacity: 0.35 })));
-  });
-
   STATIONS.forEach((s, i) => {
+    const px = (i - 1.5) * 4.2;
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(3.2, 1.8, 0.25),
       new THREE.MeshBasicMaterial({ map: labelTexture(s.label, s.sub, s.color), transparent: true })
     );
-    mesh.position.set((i - 1.5) * 4.2, 0.4, 0);
+    mesh.position.set(px, 0.4, 0.5);
     mesh.scale.setScalar(0.001);
-    mesh.userData = { station: s, phase: i * 1.7, born: 0.4 + i * 0.22,
-      angle: i * 1.9 + 0.6, speed: SPEEDS[i], radius: ORBITS[i] };
+    mesh.userData = { station: s, baseY: 0.4, phase: i * 1.7, baseX: px, born: 0.4 + i * 0.22 };
     scene.add(mesh); pickables.push(mesh);
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(1.6, 0.03, 10, 60),
       new THREE.MeshBasicMaterial({ color: new THREE.Color(s.color), transparent: true, opacity: 0 })
     );
-    ring.position.copy(mesh.position); ring.userData = { ring: true, phase: i };
+    ring.position.set(px, 0.4, 0.1); ring.userData = { ring: true, phase: i };
     scene.add(ring); mesh.userData.ring = ring;
   });
 
@@ -254,27 +242,23 @@ function initHub() {
   const look = new THREE.Vector3(0, 0.4, 0);
   const basePos = new THREE.Vector3(0, 1.6, 11);
   function easeOutBack(x) { const c = 1.70158; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); }
-  let lastT = -1;
   (function anim(t) {
     requestAnimationFrame(anim);
     const time = (t || 0) / 1000;
     const parX = (typeof PTR !== "undefined" ? PTR.nx : 0);
     const parY = (typeof PTR !== "undefined" ? PTR.ny : 0);
-    if (lastT < 0) lastT = time;
-    const dt = Math.min(0.05, Math.max(0, time - lastT)); lastT = time;
     sun.scale.setScalar(1 + Math.sin(time * 2.2) * 0.045);
     glow.material.opacity = 0.24 + Math.sin(time * 2.2) * 0.07;
     sun.rotation.y += 0.004; sunLbl.lookAt(camera.position);
     pickables.forEach((m) => {
       const u = m.userData;
-      u.angle += u.speed * dt;
-      orbitPoint(u.radius, u.angle, m.position);
-      m.position.y += Math.sin(time * 1.2 + u.phase) * 0.15;
       const raw = Math.min(1, Math.max(0, (time - u.born) * 1.4));
       const grow = raw <= 0 ? 0.001 : easeOutBack(raw);
       m.scale.setScalar(grow * (m === hovered ? 1.12 : 1));
+      m.position.x = u.baseX;
+      m.position.y = u.baseY + Math.sin(time * 1.2 + u.phase) * 0.18;
       if (spinFx > 0) m.rotation.y += 0.22 * spinFx; else m.lookAt(camera.position);
-      u.ring.position.copy(m.position); u.ring.position.z -= 0.4;
+      u.ring.position.set(u.baseX, m.position.y, 0.1);
       u.ring.rotation.z += 0.003;
       u.ring.material.opacity = 0.5 * Math.min(1, raw * 2);
     });
@@ -298,13 +282,15 @@ function initHub() {
 function enterStation(s) {
   activeStation = s;
   spinFx = 1;
-  const mesh = pickables.find((m) => m.userData.station.id === s.id);
-  const p = mesh ? mesh.position : new THREE.Vector3(0, 0.4, 0);
-  camGoal = new THREE.Vector3(p.x * 0.55, 0.9, p.z + 5.4);
-  lookGoal = p.clone();
+  camGoal = new THREE.Vector3(s ? meshX(s) : 0, 0.8, 5.7);
+  lookGoal = new THREE.Vector3(meshX(s), 0.4, 0.5);
   document.getElementById("station-title").textContent = s.label.charAt(0) + s.label.slice(1).toLowerCase();
   renderStationBody(s.id);
   document.getElementById("station").classList.remove("hidden");
+}
+function meshX(s) {
+  const i = STATIONS.findIndex((x) => x.id === s.id);
+  return (i - 1.5) * 4.2;
 }
 document.getElementById("back-btn").addEventListener("click", () => {
   document.getElementById("station").classList.add("hidden");
