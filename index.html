@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NovaDesk 3D — Notes, Todos, Practice, Time</title>
+<link rel="stylesheet" href="styles.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<div id="login" class="login">
+  <div class="login-card tilt">
+    <h1>NovaDesk 3D</h1>
+    <p class="muted">Your 3D productivity space — notes, todos, practice, time.</p>
+    <div id="gsi-btn"></div>
+    <button id="demo-btn">Continue in demo mode</button>
+    <p id="login-note" class="muted"></p>
+  </div>
+</div>
+
+<div id="hub" class="hidden">
+  <div class="topbar">
+    <div class="brand">NovaDesk 3D</div>
+    <div class="hint">Click a floating panel to enter</div>
+    <div class="userchip">
+      <img id="user-pic" alt="" />
+      <span id="user-name"></span>
+      <button id="logout-btn">Logout</button>
+    </div>
+  </div>
+
+  <div id="station" class="station hidden">
+    <div class="station-head">
+      <button id="back-btn">← Back to hub</button>
+      <h2 id="station-title"></h2>
+    </div>
+    <div id="station-body"></div>
+  </div>
+</div>
+
+<div id="cursor-dot"></div>
+<div id="cursor-trail"></div>
+<div id="cursor-ring"></div>
+<div id="toast"></div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
