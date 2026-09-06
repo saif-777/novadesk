@@ -145,14 +145,15 @@ function labelTexture(main, sub, color) {
 function initHub() {
   if (!window.THREE) return;
   const canvas = document.getElementById("bg");
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
   camera.position.set(0, 1.6, 11);
   scene.add(new THREE.AmbientLight(0xffffff, 0.9));
   const dl = new THREE.DirectionalLight(0xffffff, 0.6); dl.position.set(4, 8, 6); scene.add(dl);
 
-  const N = 700, pos = new Float32Array(N * 3);
+  const N = 400, pos = new Float32Array(N * 3);
   for (let i = 0; i < N; i++) {
     pos[i * 3] = (Math.random() - 0.5) * 40;
     pos[i * 3 + 1] = (Math.random() - 0.5) * 24;
@@ -177,7 +178,7 @@ function initHub() {
 
   const CRY_COLS = [0x22d3ee, 0x818cf8, 0xe879f9, 0x4ade80, 0xfbbf24];
   const crystals = [];
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 10; i++) {
     const geo = i % 2 ? new THREE.OctahedronGeometry(0.3) : new THREE.IcosahedronGeometry(0.24);
     const cm = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
       color: CRY_COLS[i % CRY_COLS.length], wireframe: true, transparent: true, opacity: 0.65 }));
