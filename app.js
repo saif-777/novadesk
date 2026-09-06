@@ -55,7 +55,21 @@ function setUser(u) {
   const pic = document.getElementById("user-pic");
   if (u.pic) { pic.src = u.pic; pic.style.display = "block"; }
   bootModules();
+  renderHubStats();
+  if (!window._hubStatTimer) window._hubStatTimer = setInterval(renderHubStats, 5000);
   toast("Welcome, " + (u.name || "friend"));
+}
+function renderHubStats() {
+  const el = document.getElementById("hub-stats");
+  if (!el || !USER) return;
+  const notes = (store.get(K("notes"), []) || []).length;
+  const todos = (store.get(K("todos"), []) || []).filter((t) => !t.done).length;
+  const skills = store.get(K("practice"), []) || [];
+  const best = skills.reduce((m, s) => Math.max(m, s.streak || 0), 0);
+  const focus = store.get(K("pomo_done"), 0) || 0;
+  el.innerHTML = "<span>\uD83D\uDCDD " + notes + " notes</span><span>\u2705 " +
+    todos + " open</span><span>\uD83D\uDD25 " + best + "d streak</span><span>\u23F1 " +
+    focus + " focus</span>";
 }
 document.getElementById("logout-btn").addEventListener("click", () => {
   try { if (window.google && window.google.accounts) google.accounts.id.disableAutoSelect(); } catch (e) {}
@@ -121,9 +135,9 @@ function labelTexture(main, sub, color) {
   x.lineTo(r, 284); x.quadraticCurveTo(4, 284, 4, 284 - r);
   x.lineTo(4, r); x.quadraticCurveTo(4, 4, r, 4); x.closePath(); x.fill();
   x.strokeStyle = color; x.lineWidth = 6; x.stroke();
-  x.fillStyle = color; x.font = "bold 64px Segoe UI, Arial"; x.textAlign = "center";
+  x.fillStyle = color;   x.font = "bold 64px 'Space Grotesk', 'Segoe UI', Arial"; x.textAlign = "center";
   x.fillText(main, 256, 140);
-  x.fillStyle = "#9aa7c7"; x.font = "30px Segoe UI, Arial";
+  x.fillStyle = "#9aa7c7"; x.font = "30px 'Space Grotesk', 'Segoe UI', Arial";
   x.fillText(sub, 256, 200);
   const t = new THREE.CanvasTexture(c); t.anisotropy = 4;
   return t;
@@ -148,6 +162,29 @@ function initHub() {
   sg.setAttribute("position", new THREE.BufferAttribute(pos, 3));
   const dust = new THREE.Points(sg, new THREE.PointsMaterial({ size: 0.05, color: 0x6ea8ff, transparent: true, opacity: 0.7 }));
   scene.add(dust);
+
+  const grid = new THREE.GridHelper(70, 46, 0x22d3ee, 0x2c2560);
+  grid.position.y = -3.2;
+  grid.material.transparent = true; grid.material.opacity = 0.28;
+  scene.add(grid);
+
+  const halo1 = new THREE.Mesh(new THREE.TorusGeometry(7.5, 0.035, 10, 140),
+    new THREE.MeshBasicMaterial({ color: 0x818cf8, transparent: true, opacity: 0.35 }));
+  halo1.position.set(0, 0.4, -3); halo1.rotation.x = 1.25; scene.add(halo1);
+  const halo2 = new THREE.Mesh(new THREE.TorusGeometry(9.5, 0.025, 10, 140),
+    new THREE.MeshBasicMaterial({ color: 0xe879f9, transparent: true, opacity: 0.22 }));
+  halo2.position.set(0, 0.4, -4); halo2.rotation.x = 1.05; halo2.rotation.y = 0.3; scene.add(halo2);
+
+  const CRY_COLS = [0x22d3ee, 0x818cf8, 0xe879f9, 0x4ade80, 0xfbbf24];
+  const crystals = [];
+  for (let i = 0; i < 14; i++) {
+    const geo = i % 2 ? new THREE.OctahedronGeometry(0.3) : new THREE.IcosahedronGeometry(0.24);
+    const cm = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      color: CRY_COLS[i % CRY_COLS.length], wireframe: true, transparent: true, opacity: 0.65 }));
+    cm.position.set((Math.random() - 0.5) * 26, -2 + Math.random() * 6, -2 - Math.random() * 7);
+    cm.userData = { baseY: cm.position.y, ph: Math.random() * 6.28, sp: 0.4 + Math.random() * 0.8 };
+    scene.add(cm); crystals.push(cm);
+  }
 
   STATIONS.forEach((s, i) => {
     const px = (i - 1.5) * 4.2;
@@ -211,6 +248,11 @@ function initHub() {
     });
     if (spinFx > 0) spinFx -= 0.03;
     dust.rotation.y += 0.0004;
+    halo1.rotation.z += 0.0012; halo2.rotation.z -= 0.0009;
+    crystals.forEach((c) => {
+      c.rotation.x += 0.004 * c.userData.sp; c.rotation.y += 0.006 * c.userData.sp;
+      c.position.y = c.userData.baseY + Math.sin(time * c.userData.sp + c.userData.ph) * 0.35;
+    });
     if (camGoal) {
       basePos.lerp(camGoal, 0.06);
       if (basePos.distanceTo(camGoal) < 0.05) camGoal = null;
