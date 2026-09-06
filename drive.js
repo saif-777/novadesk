@@ -132,7 +132,7 @@ async function driveConnect() {
     DRIVE.enabled = true;
     driveStatus("synced \u2713");
     toast("Cloud sync on");
-  } catch (e) { driveStatus("off"); }
+  } catch (e) { driveStatus("off"); toast("Sync failed: " + ((e && e.message) || e)); }
 }
 
 (function initDrive() {
