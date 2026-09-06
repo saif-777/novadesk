@@ -187,16 +187,6 @@ function initHub() {
     scene.add(cm); crystals.push(cm);
   }
 
-  const sun = new THREE.Mesh(new THREE.SphereGeometry(1.05, 32, 32),
-    new THREE.MeshBasicMaterial({ color: 0xffc94d }));
-  sun.position.set(0, 0.4, -1.5); scene.add(sun);
-  const glow = new THREE.Mesh(new THREE.SphereGeometry(1.5, 32, 32),
-    new THREE.MeshBasicMaterial({ color: 0xff9d2e, transparent: true, opacity: 0.26 }));
-  glow.position.copy(sun.position); scene.add(glow);
-  const sunLbl = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.1),
-    new THREE.MeshBasicMaterial({ map: labelTexture("NOVADESK", "your solar hub", "#ffd166"), transparent: true }));
-  sunLbl.position.set(0, 2.5, -1.5); scene.add(sunLbl);
-
   STATIONS.forEach((s, i) => {
     const px = (i - 1.5) * 4.2;
     const mesh = new THREE.Mesh(
@@ -247,9 +237,6 @@ function initHub() {
     const time = (t || 0) / 1000;
     const parX = (typeof PTR !== "undefined" ? PTR.nx : 0);
     const parY = (typeof PTR !== "undefined" ? PTR.ny : 0);
-    sun.scale.setScalar(1 + Math.sin(time * 2.2) * 0.045);
-    glow.material.opacity = 0.24 + Math.sin(time * 2.2) * 0.07;
-    sun.rotation.y += 0.004; sunLbl.lookAt(camera.position);
     pickables.forEach((m) => {
       const u = m.userData;
       const raw = Math.min(1, Math.max(0, (time - u.born) * 1.4));
