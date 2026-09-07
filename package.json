@@ -1,0 +1,14 @@
+{
+  "name": "novadesk-3d",
+  "version": "1.0.0",
+  "description": "NovaDesk 3D — desktop productivity space",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-packager . NovaDesk --platform=win32 --arch=x64 --overwrite --out=dist"
+  },
+  "dependencies": {
+    "electron": "^44.2.0",
+    "electron-packager": "^17.1.2"
+  }
+}
