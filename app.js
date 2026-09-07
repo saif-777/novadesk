@@ -83,6 +83,7 @@ document.getElementById("demo-btn").addEventListener("click", () =>
   setUser({ sub: "demo", name: "Demo User", email: "", pic: "" }));
 
 function initAuth() {
+  if (window.novaDesk && window.novaDesk.isDesktop) return initDesktopAuth();
   const saved = store.get("nd3_session", null);
   if (saved) { setUser(saved); return; }
   const cid = (window.NOVA && window.NOVA.GOOGLE_CLIENT_ID) || "";
@@ -113,6 +114,51 @@ function initAuth() {
       note.textContent = "Google script did not load (offline?) — use demo mode.";
     }
   }, 200);
+}
+
+/* ============ DESKTOP (Electron EXE) AUTH ============
+   Google blocks OAuth inside embedded browsers, so the EXE signs in
+   through the system browser (main process loopback flow, PKCE).
+   Tokens land on USER.dt = { access, exp, refresh } for Drive sync. */
+function syncDriveFromSession() {
+  try {
+    if (USER && USER.dt && USER.dt.access) {
+      DRIVE.token = USER.dt.access;
+      DRIVE.exp = USER.dt.exp || 0;
+    }
+  } catch (e) {}
+}
+function initDesktopAuth() {
+  const note = document.getElementById("login-note");
+  const holder = document.getElementById("gsi-btn");
+  const saved = store.get("nd3_session", null);
+  if (saved && saved.sub && saved.sub !== "demo") { setUser(saved); syncDriveFromSession(); return; }
+  const cid = (window.NOVA && window.NOVA.GOOGLE_DESKTOP_CLIENT_ID) || "";
+  holder.innerHTML = "";
+  const b = document.createElement("button");
+  b.id = "desk-login-btn";
+  b.textContent = "Sign in with Google";
+  b.addEventListener("click", async () => {
+    if (!cid) { note.textContent = "Desktop sign-in needs a Desktop-type Client ID in config.js (GOOGLE_DESKTOP_CLIENT_ID) — or use demo."; return; }
+    note.textContent = "Browser opened — finish sign-in there…";
+    try {
+      const prev = (store.get("nd3_session", null) || {}).dt || {};
+      const res = await window.novaDesk.login(cid);
+      const p = decodeJwt(res.id_token);
+      setUser({
+        sub: p.sub, name: p.name, email: p.email, pic: p.picture,
+        dt: {
+          access: res.access_token,
+          exp: Date.now() + (parseInt(res.expires_in || "3600", 10) * 1000),
+          refresh: res.refresh_token || prev.refresh || null
+        }
+      });
+      syncDriveFromSession();
+      note.textContent = "";
+    } catch (e) { note.textContent = "Login failed: " + ((e && e.message) || e); }
+  });
+  holder.appendChild(b);
+  note.textContent = cid ? "" : "Desktop sign-in isn't configured yet — use demo, or add a Desktop Client ID in config.js.";
 }
 
 /* ================= 3D HUB ================= */

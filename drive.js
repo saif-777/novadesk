@@ -93,9 +93,40 @@ function scheduleSave() {
   DRIVE.timer = setTimeout(() => drivePush(false), 2500);
 }
 
+/* Desktop (Electron EXE): tokens come from the system-browser PKCE login
+   and live on USER.dt. Silent refresh uses the stored refresh token. */
+async function desktopEnsureToken(interactive, resolve, reject) {
+  try {
+    const cid = (window.NOVA && window.NOVA.GOOGLE_DESKTOP_CLIENT_ID) || "";
+    if (!cid) throw new Error("Desktop Client ID missing in config.js");
+    const dt = (USER && USER.dt) || {};
+    if (dt.access && Date.now() < dt.exp - 60000) {
+      DRIVE.token = dt.access; DRIVE.exp = dt.exp; return resolve();
+    }
+    if (dt.refresh) {
+      const r = await window.novaDesk.refresh(cid, dt.refresh);
+      dt.access = r.access_token;
+      dt.exp = Date.now() + (parseInt(r.expires_in || "3600", 10) * 1000);
+      USER.dt = dt;
+      try { store.set("nd3_session", USER); } catch (e) {}
+      DRIVE.token = dt.access; DRIVE.exp = dt.exp; return resolve();
+    }
+    if (!interactive) throw new Error("sign in again");
+    const res = await window.novaDesk.login(cid);
+    USER.dt = {
+      access: res.access_token,
+      exp: Date.now() + (parseInt(res.expires_in || "3600", 10) * 1000),
+      refresh: res.refresh_token || null
+    };
+    try { store.set("nd3_session", USER); } catch (e) {}
+    DRIVE.token = USER.dt.access; DRIVE.exp = USER.dt.exp; resolve();
+  } catch (e) { reject(e); }
+}
+
 function ensureToken(interactive) {
   return new Promise((resolve, reject) => {
     if (!interactive && DRIVE.token && Date.now() < DRIVE.exp - 60000) return resolve();
+    if (window.novaDesk && window.novaDesk.isDesktop) return desktopEnsureToken(interactive, resolve, reject);
     const cid = (window.NOVA && window.NOVA.GOOGLE_CLIENT_ID) || "";
     if (!cid) { toast("Add your Client ID in config.js first"); return reject(new Error("no cid")); }
     if (!window.google || !google.accounts || !google.accounts.oauth2) {
