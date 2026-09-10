@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="NovaDesk 3D — your 3D productivity space. Notes, todos, practice sessions and time tracking with Google Drive sync.">
+    <title>NovaDesk 3D — Your 3D Productivity Space</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* Canvas Background */
+        #canvas3d {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 18px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10, 14, 39, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background 0.3s;
+        }
+
+        nav.scrolled {
+            background: rgba(10, 14, 39, 0.95);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.3s;
+            font-size: 16px;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: #667eea;
+        }
+
+        .nav-cta {
+            padding: 10px 26px !important;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50px;
+            font-weight: 600;
+        }
+
+        .nav-cta:hover {
+            color: #fff !important;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .hamburger span {
+            width: 26px;
+            height: 3px;
+            background: #fff;
+            border-radius: 3px;
+            transition: all 0.3s;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 20px 60px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 50px;
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(102, 126, 234, 0.5);
+            color: #a5b4fc;
+            font-size: 14px;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        .hero h1 {
+            font-size: 64px;
+            margin-bottom: 20px;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.5)); }
+            50% { filter: drop-shadow(0 0 40px rgba(118, 75, 162, 0.8)); }
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: #a0aec0;
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: translateY(-3px);
+        }
+
+        /* Stats strip */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            flex-wrap: wrap;
+            padding: 40px 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat .num {
+            font-size: 40px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #f093fb);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat .label {
+            color: #a0aec0;
+            font-size: 15px;
+            margin-top: 5px;
+        }
+
+        /* Sections */
+        section {
+            padding: 100px 50px;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-sub {
+            text-align: center;
+            color: #a0aec0;
+            font-size: 18px;
+            margin-bottom: 60px;
+        }
+
+        /* Features */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .feature-card p {
+            color: #a0aec0;
+            line-height: 1.6;
+        }
+
+        /* How it works */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 30px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .step {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .step-num {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            font-weight: bold;
+        }
+
+        .step h3 {
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+
+        .step p {
+            color: #a0aec0;
+            line-height: 1.6;
+        }
+
+        /* Pricing */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .price-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 45px 35px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .price-card.popular {
+            border-color: #667eea;
+            box-shadow: 0 0 40px rgba(102, 126, 234, 0.25);
+            transform: scale(1.05);
+        }
+
+        .price-card:hover {
+            transform: translateY(-8px);
+        }
+
+        .price-card.popular:hover {
+            transform: scale(1.05) translateY(-8px);
+        }
+
+        .popular-tag {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 5px 20px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .price-card h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .price {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 15px 0 5px;
+        }
+
+        .price span {
+            font-size: 16px;
+            color: #a0aec0;
+            font-weight: normal;
+        }
+
+        .price-card ul {
+            list-style: none;
+            margin: 25px 0 30px;
+            text-align: left;
+        }
+
+        .price-card li {
+            padding: 8px 0;
+            color: #a0aec0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .price-card li::before {
+            content: "✓ ";
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        /* CTA banner */
+        .cta-banner {
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 70px 40px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            border: 1px solid rgba(102, 126, 234, 0.4);
+        }
+
+        .cta-banner h2 {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+        .cta-banner p {
+            color: #a0aec0;
+            margin-bottom: 30px;
+            font-size: 18px;
+        }
+
+        /* Contact / Footer */
+        footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(10, 14, 39, 0.9);
+            padding: 60px 50px 30px;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 40px;
+            max-width: 1100px;
+            margin: 0 auto 40px;
+        }
+
+        .footer-grid h4 {
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .footer-grid a {
+            display: block;
+            color: #a0aec0;
+            text-decoration: none;
+            padding: 5px 0;
+            transition: color 0.3s;
+        }
+
+        .footer-grid a:hover {
+            color: #667eea;
+        }
+
+        .footer-grid p {
+            color: #a0aec0;
+            line-height: 1.6;
+        }
+
+        .copyright {
+            text-align: center;
+            color: #718096;
+            font-size: 14px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 42px;
+            }
+            nav {
+                padding: 15px 20px;
+            }
+            .hamburger {
+                display: flex;
+            }
+            .nav-links {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                flex-direction: column;
+                background: rgba(10, 14, 39, 0.97);
+                padding: 20px;
+                gap: 18px;
+                display: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .nav-links.open {
+                display: flex;
+            }
+            section {
+                padding: 70px 20px;
+            }
+            .section-title {
+                font-size: 34px;
+            }
+            .stats {
+                gap: 30px;
+            }
+            .price-card.popular {
+                transform: none;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto;
+            }
+            .hero h1 {
+                animation: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas3d" aria-hidden="true"></canvas>
+
+    <nav id="navbar">
+        <a class="logo" href="#home">NovaDesk</a>
+        <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="#home">Home</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#how">How It Works</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#contact">Contact</a></li>
+            <li><a href="./index.html" class="nav-cta">Launch App</a></li>
+        </ul>
+    </nav>
+
+    <section class="hero" id="home">
+        <div>
+            <div class="badge">✨ 3D PRODUCTIVITY SPACE</div>
+            <h1>Welcome to NovaDesk</h1>
+            <p>Notes, todos, practice sessions and time tracking — floating in a stunning 3D space, synced with your Google Drive.</p>
+            <div class="cta-buttons">
+                <a href="./index.html" class="btn btn-primary">Launch App</a>
+                <a href="#features" class="btn btn-secondary">Learn More</a>
+            </div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="num" data-count="4">0</div>
+                    <div class="label">Productivity Tools</div>
+                </div>
+                <div class="stat">
+                    <div class="num" data-count="100">0</div>
+                    <div class="label">% Free to Start</div>
+                </div>
+                <div class="stat">
+                    <div class="num" data-count="24">0</div>
+                    <div class="label">Hour Access, Anywhere</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <h2 class="section-title">Amazing Features</h2>
+        <p class="section-sub">Everything you need to stay productive, in one 3D space.</p>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📝</div>
+                <h3>Smart Notes</h3>
+                <p>Capture ideas instantly in floating panels. Your notes auto-save and sync with Google Drive.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">✅</div>
+                <h3>Todos That Stick</h3>
+                <p>Manage tasks visually in 3D. Check things off and watch your progress grow.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Practice Mode</h3>
+                <p>Dedicated practice sessions with focus timers to build skills every single day.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⏱️</div>
+                <h3>Time Tracking</h3>
+                <p>See exactly where your hours go with built-in time tracking on every task.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">☁️</div>
+                <h3>Drive Sync</h3>
+                <p>Sign in with Google and your data follows you on every device, anywhere in the world.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h3>Beautiful 3D Design</h3>
+                <p>A stunning floating workspace that makes productivity feel like play, not work.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="how">
+        <h2 class="section-title">How It Works</h2>
+        <p class="section-sub">Up and running in under a minute.</p>
+        <div class="steps">
+            <div class="step">
+                <div class="step-num">1</div>
+                <h3>Open the App</h3>
+                <p>No install needed — it runs right in your browser, or as a desktop app.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <h3>Sign In with Google</h3>
+                <p>One click connects your Drive so notes and todos sync everywhere.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <h3>Click a Floating Panel</h3>
+                <p>Jump into notes, todos, practice or time — and get things done.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="pricing">
+        <h2 class="section-title">Simple Pricing</h2>
+        <p class="section-sub">Start free. Upgrade when you need more.</p>
+        <div class="pricing-grid">
+            <div class="price-card">
+                <h3>Starter</h3>
+                <div class="price">$0<span> / forever</span></div>
+                <ul>
+                    <li>Notes & todos</li>
+                    <li>Practice mode</li>
+                    <li>Time tracking</li>
+                    <li>Google Drive sync</li>
+                </ul>
+                <a href="./index.html" class="btn btn-secondary">Start Free</a>
+            </div>
+            <div class="price-card popular">
+                <div class="popular-tag">MOST POPULAR</div>
+                <h3>Pro</h3>
+                <div class="price">$5<span> / month</span></div>
+                <ul>
+                    <li>Everything in Starter</li>
+                    <li>Unlimited panels</li>
+                    <li>Custom 3D themes</li>
+                    <li>Priority support</li>
+                </ul>
+                <a href="#contact" class="btn btn-primary">Go Pro</a>
+            </div>
+            <div class="price-card">
+                <h3>Team</h3>
+                <div class="price">$12<span> / user / mo</span></div>
+                <ul>
+                    <li>Everything in Pro</li>
+                    <li>Shared workspaces</li>
+                    <li>Team analytics</li>
+                    <li>Admin controls</li>
+                </ul>
+                <a href="#contact" class="btn btn-secondary">Contact Us</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="launch">
+        <div class="cta-banner">
+            <h2>Ready to enter your 3D workspace?</h2>
+            <p>Your notes, todos and focus time — all floating in one beautiful space.</p>
+            <a href="./index.html" class="btn btn-primary">Launch NovaDesk Now</a>
+        </div>
+    </section>
+
+    <footer id="contact">
+        <div class="footer-grid">
+            <div>
+                <h4>NovaDesk</h4>
+                <p>Your 3D productivity space — notes, todos, practice, time. Free to start, synced with Google Drive.</p>
+            </div>
+            <div>
+                <h4>Product</h4>
+                <a href="#features">Features</a>
+                <a href="#how">How It Works</a>
+                <a href="#pricing">Pricing</a>
+                <a href="./index.html">Launch App</a>
+            </div>
+            <div>
+                <h4>Contact</h4>
+                <a href="https://github.com/saif-777/novadesk" target="_blank" rel="noopener">GitHub</a>
+                <a href="https://github.com/saif-777/novadesk/issues" target="_blank" rel="noopener">Report an Issue</a>
+                <a href="mailto:hello@novadesk.app">hello@novadesk.app</a>
+            </div>
+        </div>
+        <div class="copyright">© 2026 NovaDesk. All rights reserved.</div>
+    </footer>
+
+    <script>
+        // ---------- 3D starfield (lightweight: solid fills, no per-frame gradients) ----------
+        const canvas = document.getElementById('canvas3d');
+        const ctx = canvas.getContext('2d');
+        const DPR = Math.min(window.devicePixelRatio || 1, 2);
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        let W = 0, H = 0;
+        function resize() {
+            W = window.innerWidth;
+            H = window.innerHeight;
+            canvas.width = W * DPR;
+            canvas.height = H * DPR;
+            ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        // Fewer particles on small screens for smooth performance
+        const COUNT = W < 768 ? 70 : 150;
+        const COLORS = ['102,126,234', '118,75,162', '240,147,251'];
+
+        class Particle {
+            constructor() {
+                this.reset(true);
+            }
+            reset(anyZ) {
+                this.x = Math.random() * W;
+                this.y = Math.random() * H;
+                this.z = anyZ ? Math.random() * 1000 : 1000;
+                this.vz = Math.random() * 2 + 1;
+                this.color = COLORS[(Math.random() * COLORS.length) | 0];
+            }
+            update() {
+                this.z -= this.vz;
+                if (this.z <= 0) this.reset(false);
+            }
+            draw() {
+                const scale = 1000 / this.z;
+                const x = (this.x - W / 2) * scale + W / 2 + mouseX * scale * 20;
+                const y = (this.y - H / 2) * scale + H / 2 + mouseY * scale * 20;
+                const size = Math.min(scale * 2, 6);
+                ctx.fillStyle = 'rgba(' + this.color + ',' + Math.min(0.9, scale / 3).toFixed(2) + ')';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        const particles = [];
+        for (let i = 0; i < COUNT; i++) particles.push(new Particle());
+
+        // Subtle mouse parallax
+        let mouseX = 0, mouseY = 0;
+        window.addEventListener('pointermove', (e) => {
+            mouseX = e.clientX / W - 0.5;
+            mouseY = e.clientY / H - 0.5;
+        }, { passive: true });
+
+        let running = true;
+        document.addEventListener('visibilitychange', () => {
+            running = !document.hidden;
+            if (running && !reduceMotion) requestAnimationFrame(animate);
+        });
+
+        function animate() {
+            if (!running) return;
+            ctx.fillStyle = 'rgba(10, 14, 39, 0.25)';
+            ctx.fillRect(0, 0, W, H);
+            for (const p of particles) {
+                p.update();
+                p.draw();
+            }
+            if (!reduceMotion) requestAnimationFrame(animate);
+        }
+
+        if (reduceMotion) {
+            // Draw one static frame for users who prefer no motion
+            ctx.fillStyle = '#0a0e27';
+            ctx.fillRect(0, 0, W, H);
+            for (const p of particles) p.draw();
+        } else {
+            ctx.fillStyle = '#0a0e27';
+            ctx.fillRect(0, 0, W, H);
+            animate();
+        }
+
+        // ---------- Nav: scroll style, mobile menu, scroll-spy ----------
+        const nav = document.getElementById('navbar');
+        const hamburger = document.getElementById('hamburger');
+        const navLinks = document.getElementById('navLinks');
+
+        window.addEventListener('scroll', () => {
+            nav.classList.toggle('scrolled', window.scrollY > 50);
+        }, { passive: true });
+
+        hamburger.addEventListener('click', () => {
+            const open = navLinks.classList.toggle('open');
+            hamburger.setAttribute('aria-expanded', open);
+        });
+
+        navLinks.addEventListener('click', (e) => {
+            if (e.target.tagName === 'A') {
+                navLinks.classList.remove('open');
+                hamburger.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        // Highlight current section in nav
+        const spySections = ['home', 'features', 'how', 'pricing', 'contact'];
+        const spyLinks = [...navLinks.querySelectorAll('a[href^="#"]')];
+        const spyObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    spyLinks.forEach((a) =>
+                        a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id)
+                    );
+                }
+            });
+        }, { rootMargin: '-40% 0px -55% 0px' });
+        spySections.forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) spyObserver.observe(el);
+        });
+
+        // ---------- Animated stat counters ----------
+        const counters = document.querySelectorAll('.stat .num');
+        const counterObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                const el = entry.target;
+                counterObserver.unobserve(el);
+                const target = parseInt(el.dataset.count, 10) || 0;
+                const dur = 1200;
+                const t0 = performance.now();
+                function tick(t) {
+                    const k = Math.min((t - t0) / dur, 1);
+                    el.textContent = Math.round(target * (1 - Math.pow(1 - k, 3)));
+                    if (k < 1) requestAnimationFrame(tick);
+                }
+                requestAnimationFrame(tick);
+            });
+        }, { threshold: 0.5 });
+        counters.forEach((el) => counterObserver.observe(el));
+    </script>
+</body>
+</html>
