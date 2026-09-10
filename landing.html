@@ -281,6 +281,39 @@
             box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
         }
 
+        /* Click ripple (spawned by JS) */
+        .btn .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            animation: rippleGrow 0.6s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes rippleGrow {
+            from {
+                width: 0;
+                height: 0;
+                opacity: 0.6;
+            }
+            to {
+                width: 300px;
+                height: 300px;
+                opacity: 0;
+            }
+        }
+
+        /* Page fade-in */
+        body {
+            opacity: 0;
+        }
+
+        body.loaded {
+            opacity: 1;
+            transition: opacity 0.8s ease;
+        }
+
         /* Stats strip */
         .stats {
             display: flex;
@@ -646,6 +679,7 @@
             }
         }
     </style>
+    <noscript><style>body { opacity: 1; }</style></noscript>
 </head>
 <body>
     <canvas id="canvas3d" aria-hidden="true"></canvas>
@@ -668,7 +702,7 @@
     </nav>
 
     <section class="hero" id="home">
-        <div>
+        <div id="heroInner">
             <div class="badge">✨ 3D PRODUCTIVITY SPACE</div>
             <h1>Welcome to NovaDesk</h1>
             <p>Notes, todos, practice sessions and time tracking — floating in a stunning 3D space, synced with your Google Drive.</p>
@@ -844,8 +878,9 @@
         window.addEventListener('resize', resize);
 
         // Fewer particles on small screens for smooth performance
-        const COUNT = W < 768 ? 70 : 150;
+        const MAX_PARTICLES = W < 768 ? 70 : 150;
         const COLORS = ['102,126,234', '118,75,162', '240,147,251'];
+        const finePointer = window.matchMedia('(pointer: fine)').matches;
 
         class Particle {
             constructor() {
@@ -875,7 +910,7 @@
         }
 
         const particles = [];
-        for (let i = 0; i < COUNT; i++) particles.push(new Particle());
+        for (let i = 0; i < MAX_PARTICLES; i++) particles.push(new Particle());
 
         // Subtle mouse parallax
         let mouseX = 0, mouseY = 0;
@@ -884,13 +919,69 @@
             mouseY = e.clientY / H - 0.5;
         }, { passive: true });
 
+        // Cursor trail (desktop mice only)
+        const trails = [];
+        if (finePointer && !reduceMotion) {
+            window.addEventListener('pointermove', (e) => {
+                trails.push({ x: e.clientX, y: e.clientY, age: 0 });
+                if (trails.length > 20) trails.shift();
+            }, { passive: true });
+        }
+
+        function drawTrails() {
+            for (let i = trails.length - 1; i >= 0; i--) {
+                const t = trails[i];
+                t.age++;
+                const k = 1 - t.age / 20;
+                if (k <= 0) {
+                    trails.splice(i, 1);
+                    continue;
+                }
+                ctx.fillStyle = 'rgba(102, 126, 234, ' + (k * 0.5).toFixed(2) + ')';
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, 5 * k + 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Hero content parallax (desktop mice only)
+        const heroInner = document.getElementById('heroInner');
+        function parallaxHero() {
+            if (heroInner && finePointer && !reduceMotion) {
+                heroInner.style.transform =
+                    'translate(' + (mouseX * 20).toFixed(1) + 'px,' + (mouseY * 20).toFixed(1) + 'px)';
+            }
+        }
+
         let running = true;
         document.addEventListener('visibilitychange', () => {
             running = !document.hidden;
             if (running && !reduceMotion) requestAnimationFrame(animate);
         });
 
-        function animate() {
+        let lastFrame = performance.now();
+        let fpsAccum = 0, fpsCount = 0;
+
+        function adaptParticles(now) {
+            fpsAccum += now - lastFrame;
+            lastFrame = now;
+            fpsCount++;
+            if (fpsCount >= 60) {
+                const fps = Math.round(1000 / (fpsAccum / fpsCount));
+                fpsAccum = 0;
+                fpsCount = 0;
+                if (fps < 30) {
+                    // Drop up to 10 particles on slow devices
+                    particles.splice(0, Math.min(10, particles.length - 50));
+                } else if (fps > 55 && particles.length < MAX_PARTICLES) {
+                    for (let i = 0; i < 5 && particles.length < MAX_PARTICLES; i++) {
+                        particles.push(new Particle());
+                    }
+                }
+            }
+        }
+
+        function animate(now) {
             if (!running) return;
             ctx.fillStyle = 'rgba(10, 14, 39, 0.25)';
             ctx.fillRect(0, 0, W, H);
@@ -898,6 +989,9 @@
                 p.update();
                 p.draw();
             }
+            drawTrails();
+            parallaxHero();
+            adaptParticles(now || performance.now());
             if (!reduceMotion) requestAnimationFrame(animate);
         }
 
@@ -969,6 +1063,72 @@
             });
         }, { threshold: 0.5 });
         counters.forEach((el) => counterObserver.observe(el));
+
+        // ---------- Feature cards: 3D tilt (desktop mice only) ----------
+        const featureCards = document.querySelectorAll('.feature-card');
+        if (finePointer && !reduceMotion) {
+            featureCards.forEach((card) => {
+                card.addEventListener('mousemove', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const rotateX = (e.clientY - rect.top - rect.height / 2) / 10;
+                    const rotateY = (rect.width / 2 - (e.clientX - rect.left)) / 10;
+                    card.style.transform =
+                        'perspective(1000px) rotateX(' + rotateX.toFixed(2) + 'deg) rotateY(' +
+                        rotateY.toFixed(2) + 'deg) translateY(-10px)';
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = '';
+                });
+            });
+        }
+
+        // ---------- Scroll-reveal for cards and steps ----------
+        const revealEls = document.querySelectorAll('.feature-card, .step, .price-card');
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                const el = entry.target;
+                revealObserver.unobserve(el);
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+                // Clear inline styles after the transition so CSS hover effects work again
+                setTimeout(() => {
+                    el.style.opacity = '';
+                    el.style.transform = '';
+                    el.style.transition = '';
+                    el.style.transitionDelay = '';
+                }, 800);
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+        revealEls.forEach((el) => {
+            const siblings = [...el.parentElement.children];
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(50px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            el.style.transitionDelay = (siblings.indexOf(el) * 80) + 'ms';
+            revealObserver.observe(el);
+        });
+
+        // ---------- Button click ripple ----------
+        document.querySelectorAll('.btn').forEach((button) => {
+            button.addEventListener('click', function (e) {
+                const rect = this.getBoundingClientRect();
+                const ripple = document.createElement('span');
+                ripple.className = 'ripple';
+                ripple.style.left = (e.clientX - rect.left) + 'px';
+                ripple.style.top = (e.clientY - rect.top) + 'px';
+                this.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 650);
+            });
+        });
+
+        // ---------- Page fade-in ----------
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            document.body.classList.add('loaded');
+        }));
+
+        console.log('%c🚀 NovaDesk 3D', 'font-size: 20px; color: #667eea; font-weight: bold;');
+        console.log('%cYour 3D productivity space', 'font-size: 14px; color: #764ba2;');
     </script>
 </body>
 </html>
